@@ -16,15 +16,11 @@ scaler = joblib.load(
 
 
 # ==========================================
-# 2. Load Decision Threshold
+# 2. Load Threshold
 # ==========================================
 
 with open("models/threshold.txt", "r") as file:
     threshold = float(file.read())
-
-
-print("Fraud Detection Model Loaded!")
-print(f"Decision Threshold: {threshold}")
 
 
 # ==========================================
@@ -37,14 +33,17 @@ data = pd.read_csv(
 
 
 # ==========================================
-# 4. Ask User for Transaction Number
+# 4. Find First Fraud Transaction
 # ==========================================
 
-print(f"\nAvailable transactions: 0 to {len(data) - 1}")
+fraud_transactions = data[
+    data["Class"] == 1
+]
 
-transaction_number = int(
-    input("Enter transaction number: ")
-)
+transaction_number = fraud_transactions.index[0]
+
+print("Testing Fraud Transaction")
+print(f"Transaction Number: {transaction_number}")
 
 
 # ==========================================
@@ -93,26 +92,8 @@ else:
 # 9. Display Result
 # ==========================================
 
-print("\nTransaction Prediction:")
-print(
-    f"Fraud Probability: "
-    f"{fraud_probability:.4f}"
-)
-
-print(f"Prediction: {prediction}")
-
-
-# ==========================================
-# 10. Show Actual Class
-# ==========================================
-
-actual_class = data.iloc[
-    transaction_number
-]["Class"]
-
-if actual_class == 1:
-    actual_result = "FRAUD"
-else:
-    actual_result = "NORMAL"
-
-print(f"Actual Class: {actual_result}")
+print("\nPrediction Result:")
+print(f"Fraud Probability: {fraud_probability:.4f}")
+print(f"Decision Threshold: {threshold}")
+print(f"Model Prediction: {prediction}")
+print("Actual Class: FRAUD")
