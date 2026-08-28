@@ -9,9 +9,9 @@ Credit card fraud detection is a binary classification problem where each transa
 - `0` → Normal transaction
 - `1` → Fraudulent transaction
 
-This project uses a Logistic Regression machine learning model to identify fraudulent transactions.
+This project uses a Logistic Regression machine learning model to identify potentially fraudulent transactions.
 
-Because fraudulent transactions are extremely rare compared with normal transactions, the project also focuses on handling class imbalance and selecting an appropriate prediction threshold.
+Because fraudulent transactions are extremely rare compared with normal transactions, the project focuses on handling class imbalance and selecting an appropriate prediction threshold.
 
 ---
 
@@ -34,6 +34,8 @@ The main objectives of this project are:
   - Confusion Matrix
 - Save the trained model for future predictions
 - Test the model on normal and fraudulent transactions
+- Build a Streamlit web application
+- Display model performance through an interactive dashboard
 
 ---
 
@@ -48,6 +50,7 @@ The main objectives of this project are:
 | Matplotlib | Data visualization |
 | Seaborn | Data visualization |
 | Joblib | Saving and loading the trained model |
+| Streamlit | Web application and dashboard |
 | Jupyter Notebook | Data analysis and experimentation |
 | VS Code | Development environment |
 | Git & GitHub | Version control |
@@ -81,7 +84,7 @@ This severe class imbalance makes fraud detection more challenging.
 
 The project uses **Logistic Regression**.
 
-The model is trained using:
+The model is trained using balanced class weights:
 
 ```python
 LogisticRegression(
