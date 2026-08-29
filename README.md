@@ -518,6 +518,25 @@ The system can detect potentially fraudulent transactions, make individual trans
 
 **Kartik Varshney**
 
-GitHub:
+Engineering Student
 
-https://github.com/Kartik-Varshney-4ks
+GitHub: [Kartik-Varshney-4ks](https://github.com/Kartik-Varshney-4ks)
+
+This project was independently developed as a machine learning
+project for learning, experimentation, and portfolio development.
+
+---
+
+## © Copyright
+
+**Copyright © 2026 Kartik Varshney. All Rights Reserved.**
+
+This project and its source code are the original work of Kartik Varshney.
+
+The repository is publicly available for viewing and educational
+reference. Copying, redistributing, modifying, or submitting this
+project as another person's original work is not permitted without
+prior written permission.
+
+If this project is referenced or used for learning, the original
+repository and author must be clearly credited.
