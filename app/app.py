@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 
 
 # ==========================================
@@ -15,25 +16,52 @@ st.set_page_config(
 
 
 # ==========================================
-# Load Model, Scaler and Threshold
+# File Paths
+# ==========================================
+
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
+
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "fraud_detection_model.pkl"
+)
+
+SCALER_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "scaler.pkl"
+)
+
+THRESHOLD_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "threshold.txt"
+)
+
+DATA_PATH = os.path.join(
+    BASE_DIR,
+    "dataset",
+    "creditcard.csv"
+)
+
+
+# ==========================================
+# Load Model
 # ==========================================
 
 @st.cache_resource
 def load_model():
 
-    model = joblib.load(
-        "models/fraud_detection_model.pkl"
-    )
+    model = joblib.load(MODEL_PATH)
 
-    scaler = joblib.load(
-        "models/scaler.pkl"
-    )
+    scaler = joblib.load(SCALER_PATH)
 
-    with open(
-        "models/threshold.txt",
-        "r"
-    ) as file:
-
+    with open(THRESHOLD_PATH, "r") as file:
         threshold = float(file.read())
 
     return model, scaler, threshold
@@ -46,13 +74,23 @@ def load_model():
 @st.cache_data
 def load_data():
 
-    return pd.read_csv(
-        "dataset/creditcard.csv"
-    )
+    return pd.read_csv(DATA_PATH)
 
 
-model, scaler, threshold = load_model()
-data = load_data()
+# ==========================================
+# Load Resources
+# ==========================================
+
+try:
+
+    model, scaler, threshold = load_model()
+    data = load_data()
+
+except Exception as error:
+
+    st.error("Unable to load model or dataset.")
+    st.exception(error)
+    st.stop()
 
 
 # ==========================================
@@ -62,118 +100,49 @@ data = load_data()
 st.title("💳 Credit Card Fraud Detection")
 
 st.write(
-    "Machine Learning application for detecting "
+    "Machine learning system for detecting "
     "potentially fraudulent credit card transactions."
 )
-
-st.divider()
-
-
-# ==========================================
-# Dashboard Statistics
-# ==========================================
-
-st.subheader("📊 Dataset Overview")
-
-total_transactions = len(data)
-
-normal_transactions = (
-    data["Class"] == 0
-).sum()
-
-fraud_transactions = (
-    data["Class"] == 1
-).sum()
-
-
-col1, col2, col3, col4 = st.columns(4)
-
-
-with col1:
-
-    st.metric(
-        "Total Transactions",
-        f"{total_transactions:,}"
-    )
-
-
-with col2:
-
-    st.metric(
-        "Normal Transactions",
-        f"{normal_transactions:,}"
-    )
-
-
-with col3:
-
-    st.metric(
-        "Fraud Transactions",
-        f"{fraud_transactions:,}"
-    )
-
-
-with col4:
-
-    st.metric(
-        "Decision Threshold",
-        f"{threshold:.2f}"
-    )
-
-
-st.divider()
 
 
 # ==========================================
 # Model Information
 # ==========================================
 
-st.subheader("🤖 Model Information")
+st.success("Random Forest model loaded successfully! ✅")
 
 col1, col2, col3 = st.columns(3)
 
-
 with col1:
 
-    st.info(
-        "**Algorithm**\n\n"
-        "Logistic Regression"
+    st.metric(
+        "Model",
+        "Random Forest"
     )
-
 
 with col2:
 
-    st.info(
-        "**Fraud Detection**\n\n"
-        "Binary Classification"
+    st.metric(
+        "Decision Threshold",
+        f"{threshold:.2f}"
     )
-
 
 with col3:
 
-    st.info(
-        "**Features**\n\n"
-        "30 Input Features"
+    st.metric(
+        "Total Transactions",
+        f"{len(data):,}"
     )
 
 
-st.divider()
-
-
 # ==========================================
-# Transaction Selection
+# Transaction Prediction
 # ==========================================
 
-st.subheader("🔎 Transaction Prediction")
-
-st.write(
-    "Select a transaction from the dataset "
-    "to test the trained model."
-)
-
+st.header("🔍 Check a Transaction")
 
 transaction_number = st.number_input(
-    "Transaction Number",
+    "Enter Transaction Number",
     min_value=0,
     max_value=len(data) - 1,
     value=0,
@@ -181,23 +150,10 @@ transaction_number = st.number_input(
 )
 
 
-# ==========================================
-# Prediction Button
-# ==========================================
-
 if st.button(
-    "🔍 Predict Transaction",
+    "🚨 Check Transaction",
     use_container_width=True
 ):
-
-    transaction_number = int(
-        transaction_number
-    )
-
-
-    # ======================================
-    # Select Transaction
-    # ======================================
 
     transaction = (
         data
@@ -206,41 +162,17 @@ if st.button(
         .copy()
     )
 
-
-    # ======================================
-    # Save Original Amount
-    # ======================================
-
-    original_amount = (
-        transaction["Amount"].iloc[0]
+    transaction[["Time", "Amount"]] = (
+        scaler.transform(
+            transaction[["Time", "Amount"]]
+        )
     )
 
-
-    # ======================================
-    # Scale Time and Amount
-    # ======================================
-
-    transaction[
-        ["Time", "Amount"]
-    ] = scaler.transform(
-        transaction[
-            ["Time", "Amount"]
-        ]
+    fraud_probability = (
+        model.predict_proba(
+            transaction
+        )[0][1]
     )
-
-
-    # ======================================
-    # Fraud Probability
-    # ======================================
-
-    fraud_probability = model.predict_proba(
-        transaction
-    )[0][1]
-
-
-    # ======================================
-    # Prediction
-    # ======================================
 
     if fraud_probability >= threshold:
 
@@ -251,14 +183,9 @@ if st.button(
         prediction = "NORMAL"
 
 
-    # ======================================
-    # Actual Class
-    # ======================================
-
     actual_class = data.iloc[
         transaction_number
     ]["Class"]
-
 
     if actual_class == 1:
 
@@ -269,103 +196,202 @@ if st.button(
         actual_result = "NORMAL"
 
 
-    # ======================================
-    # Results
-    # ======================================
-
-    st.divider()
-
-    st.subheader("📈 Prediction Result")
-
+    st.subheader("📊 Transaction Result")
 
     col1, col2, col3 = st.columns(3)
-
 
     with col1:
 
         st.metric(
-            "Fraud Probability",
-            f"{fraud_probability:.2%}"
+            "Transaction",
+            transaction_number
         )
-
 
     with col2:
 
         st.metric(
-            "Transaction Amount",
-            f"${original_amount:.2f}"
+            "Fraud Probability",
+            f"{fraud_probability * 100:.2f}%"
         )
-
 
     with col3:
 
         st.metric(
-            "Threshold",
-            f"{threshold:.2f}"
+            "Actual Class",
+            actual_result
         )
 
-
-    st.write(
-        f"**Transaction Number:** "
-        f"{transaction_number}"
-    )
-
-    st.write(
-        f"**Model Prediction:** "
-        f"{prediction}"
-    )
-
-    st.write(
-        f"**Actual Class:** "
-        f"{actual_result}"
-    )
-
-
-    # ======================================
-    # Probability Bar
-    # ======================================
-
-    st.write("### Fraud Probability")
-
-    st.progress(
-        float(fraud_probability)
-    )
-
-
-    # ======================================
-    # Prediction Message
-    # ======================================
 
     if prediction == "FRAUD":
 
-        st.error(
-            "🚨 FRAUDULENT TRANSACTION DETECTED"
-        )
+        st.error("🚨 FRAUD DETECTED")
 
     else:
 
-        st.success(
-            "✅ TRANSACTION APPEARS NORMAL"
+        st.success("✅ NORMAL TRANSACTION")
+
+
+    st.write(
+        f"**Prediction:** {prediction}"
+    )
+
+    st.write(
+        f"**Decision Threshold:** "
+        f"{threshold:.2f}"
+    )
+
+
+    with st.expander("View Transaction Details"):
+
+        original_transaction = (
+            data.iloc[[transaction_number]]
+        )
+
+        st.dataframe(
+            original_transaction,
+            use_container_width=True
         )
 
 
-    # ======================================
-    # Correct / Incorrect
-    # ======================================
+# ==========================================
+# Top Suspicious Transactions
+# ==========================================
 
-    if prediction == actual_result:
+st.header("🚨 Top Suspicious Transactions")
 
-        st.success(
-            "✅ Model prediction matches "
-            "the actual transaction class."
-        )
+st.write(
+    "Transactions with the highest predicted "
+    "fraud probability."
+)
 
-    else:
 
-        st.warning(
-            "⚠️ Model prediction does not "
-            "match the actual transaction class."
-        )
+# ==========================================
+# Prepare Dataset for Prediction
+# ==========================================
+
+prediction_data = (
+    data
+    .drop("Class", axis=1)
+    .copy()
+)
+
+prediction_data[["Time", "Amount"]] = (
+    scaler.transform(
+        prediction_data[["Time", "Amount"]]
+    )
+)
+
+
+# ==========================================
+# Calculate Probabilities
+# ==========================================
+
+all_probabilities = model.predict_proba(
+    prediction_data
+)[:, 1]
+
+
+# ==========================================
+# Create Results Table
+# ==========================================
+
+suspicious_transactions = pd.DataFrame({
+
+    "Transaction": range(len(data)),
+
+    "Fraud Probability": all_probabilities,
+
+    "Actual Class": data["Class"].values
+
+})
+
+
+suspicious_transactions["Prediction"] = (
+    suspicious_transactions["Fraud Probability"]
+    >= threshold
+).map({
+    True: "FRAUD",
+    False: "NORMAL"
+})
+
+
+# ==========================================
+# Sort by Fraud Probability
+# ==========================================
+
+top_suspicious = (
+    suspicious_transactions
+    .sort_values(
+        "Fraud Probability",
+        ascending=False
+    )
+    .head(10)
+    .copy()
+)
+
+
+top_suspicious["Fraud Probability"] = (
+    top_suspicious["Fraud Probability"] * 100
+).round(2)
+
+
+top_suspicious["Actual Class"] = (
+    top_suspicious["Actual Class"]
+    .map({
+        0: "NORMAL",
+        1: "FRAUD"
+    })
+)
+
+
+# ==========================================
+# Display Table
+# ==========================================
+
+st.dataframe(
+    top_suspicious,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ==========================================
+# Dataset Statistics
+# ==========================================
+
+st.header("📈 Dataset Overview")
+
+normal_count = (
+    data["Class"] == 0
+).sum()
+
+fraud_count = (
+    data["Class"] == 1
+).sum()
+
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+
+    st.metric(
+        "Normal Transactions",
+        f"{normal_count:,}"
+    )
+
+with col2:
+
+    st.metric(
+        "Fraud Transactions",
+        f"{fraud_count:,}"
+    )
+
+with col3:
+
+    st.metric(
+        "Fraud Percentage",
+        f"{(fraud_count / len(data)) * 100:.4f}%"
+    )
 
 
 # ==========================================
@@ -375,6 +401,6 @@ if st.button(
 st.divider()
 
 st.caption(
-    "Credit Card Fraud Detection | "
-    "Python + Scikit-learn + Streamlit"
+    "Credit Card Fraud Detection • "
+    "Machine Learning Project"
 )

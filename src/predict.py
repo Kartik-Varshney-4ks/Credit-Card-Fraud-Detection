@@ -3,25 +3,30 @@ import joblib
 
 
 # ==========================================
-# 1. Load Saved Model
+# 1. File Paths
 # ==========================================
 
-model = joblib.load(
-    "models/fraud_detection_model.pkl"
-)
-
-scaler = joblib.load(
-    "models/scaler.pkl"
-)
+MODEL_PATH = "models/fraud_detection_model.pkl"
+SCALER_PATH = "models/scaler.pkl"
+THRESHOLD_PATH = "models/threshold.txt"
+DATA_PATH = "dataset/creditcard.csv"
 
 
 # ==========================================
-# 2. Load Decision Threshold
+# 2. Load Model
 # ==========================================
 
-with open("models/threshold.txt", "r") as file:
+model = joblib.load(MODEL_PATH)
+
+scaler = joblib.load(SCALER_PATH)
+
+with open(THRESHOLD_PATH, "r") as file:
     threshold = float(file.read())
 
+
+# ==========================================
+# 3. Display Header
+# ==========================================
 
 print("==========================================")
 print("       CREDIT CARD FRAUD DETECTION")
@@ -32,22 +37,21 @@ print(f"Decision Threshold: {threshold}")
 
 
 # ==========================================
-# 3. Load Dataset
+# 4. Load Dataset
 # ==========================================
 
-data = pd.read_csv(
-    "dataset/creditcard.csv"
-)
+data = pd.read_csv(DATA_PATH)
 
-
-# ==========================================
-# 4. Ask for Transaction Number
-# ==========================================
 
 print(
     f"\nAvailable transactions: "
     f"0 to {len(data) - 1}"
 )
+
+
+# ==========================================
+# 5. Get Transaction Number
+# ==========================================
 
 try:
 
@@ -64,7 +68,7 @@ except ValueError:
 
 
 # ==========================================
-# 5. Check Transaction Number
+# 6. Validate Transaction Number
 # ==========================================
 
 if (
@@ -83,7 +87,7 @@ if (
 
 
 # ==========================================
-# 6. Select Transaction
+# 7. Select Transaction
 # ==========================================
 
 transaction = (
@@ -95,7 +99,7 @@ transaction = (
 
 
 # ==========================================
-# 7. Scale Time and Amount
+# 8. Scale Time and Amount
 # ==========================================
 
 transaction[["Time", "Amount"]] = (
@@ -106,7 +110,7 @@ transaction[["Time", "Amount"]] = (
 
 
 # ==========================================
-# 8. Calculate Fraud Probability
+# 9. Calculate Fraud Probability
 # ==========================================
 
 fraud_probability = (
@@ -117,7 +121,7 @@ fraud_probability = (
 
 
 # ==========================================
-# 9. Make Prediction
+# 10. Make Prediction
 # ==========================================
 
 if fraud_probability >= threshold:
@@ -130,7 +134,7 @@ else:
 
 
 # ==========================================
-# 10. Display Prediction
+# 11. Display Prediction
 # ==========================================
 
 print("\n==========================================")
@@ -147,16 +151,18 @@ print(
 )
 
 print(
-    f"Decision Threshold : {threshold}"
+    f"Decision Threshold : "
+    f"{threshold:.2f}"
 )
 
 print(
-    f"Prediction         : {prediction}"
+    f"Prediction         : "
+    f"{prediction}"
 )
 
 
 # ==========================================
-# 11. Display Actual Class
+# 12. Display Actual Class
 # ==========================================
 
 actual_class = data.iloc[
@@ -174,7 +180,8 @@ else:
 
 
 print(
-    f"Actual Class       : {actual_result}"
+    f"Actual Class       : "
+    f"{actual_result}"
 )
 
 print("==========================================")
