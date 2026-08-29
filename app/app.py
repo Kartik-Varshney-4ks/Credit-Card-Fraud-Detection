@@ -16,6 +16,32 @@ st.set_page_config(
 
 
 # ==========================================
+# Custom Styling
+# ==========================================
+
+st.markdown(
+    """
+    <style>
+
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+
+    .subtitle {
+        font-size: 1.1rem;
+        color: #666666;
+        margin-bottom: 1.5rem;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# ==========================================
 # File Paths
 # ==========================================
 
@@ -57,12 +83,22 @@ DATA_PATH = os.path.join(
 @st.cache_resource
 def load_model():
 
-    model = joblib.load(MODEL_PATH)
+    model = joblib.load(
+        MODEL_PATH
+    )
 
-    scaler = joblib.load(SCALER_PATH)
+    scaler = joblib.load(
+        SCALER_PATH
+    )
 
-    with open(THRESHOLD_PATH, "r") as file:
-        threshold = float(file.read())
+    with open(
+        THRESHOLD_PATH,
+        "r"
+    ) as file:
+
+        threshold = float(
+            file.read()
+        )
 
     return model, scaler, threshold
 
@@ -74,7 +110,44 @@ def load_model():
 @st.cache_data
 def load_data():
 
-    return pd.read_csv(DATA_PATH)
+    return pd.read_csv(
+        DATA_PATH
+    )
+
+
+# ==========================================
+# Calculate All Fraud Probabilities
+# ==========================================
+# IMPORTANT:
+# The "_" before model and scaler tells
+# Streamlit not to hash these objects.
+
+@st.cache_data
+def calculate_probabilities(
+    data,
+    _model,
+    _scaler
+):
+
+    prediction_data = (
+        data
+        .drop("Class", axis=1)
+        .copy()
+    )
+
+    prediction_data[
+        ["Time", "Amount"]
+    ] = _scaler.transform(
+        prediction_data[
+            ["Time", "Amount"]
+        ]
+    )
+
+    probabilities = _model.predict_proba(
+        prediction_data
+    )[:, 1]
+
+    return probabilities
 
 
 # ==========================================
@@ -84,12 +157,23 @@ def load_data():
 try:
 
     model, scaler, threshold = load_model()
+
     data = load_data()
+
+    all_probabilities = calculate_probabilities(
+        data,
+        model,
+        scaler
+    )
 
 except Exception as error:
 
-    st.error("Unable to load model or dataset.")
+    st.error(
+        "Unable to load model or dataset."
+    )
+
     st.exception(error)
+
     st.stop()
 
 
@@ -97,52 +181,97 @@ except Exception as error:
 # Header
 # ==========================================
 
-st.title("💳 Credit Card Fraud Detection")
+st.markdown(
+    '<div class="main-title">'
+    '💳 Credit Card Fraud Detection'
+    '</div>',
+    unsafe_allow_html=True
+)
 
-st.write(
-    "Machine learning system for detecting "
-    "potentially fraudulent credit card transactions."
+st.markdown(
+    '<div class="subtitle">'
+    'Machine learning system for detecting potentially '
+    'fraudulent credit card transactions.'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+st.success(
+    "🌲 Random Forest model loaded successfully!"
 )
 
 
 # ==========================================
-# Model Information
+# Dashboard Metrics
 # ==========================================
 
-st.success("Random Forest model loaded successfully! ✅")
+normal_count = int(
+    (data["Class"] == 0).sum()
+)
 
-col1, col2, col3 = st.columns(3)
+fraud_count = int(
+    (data["Class"] == 1).sum()
+)
+
+fraud_percentage = (
+    fraud_count / len(data)
+) * 100
+
+
+col1, col2, col3, col4 = st.columns(4)
+
 
 with col1:
 
     st.metric(
-        "Model",
+        "🤖 Model",
         "Random Forest"
     )
+
 
 with col2:
 
     st.metric(
-        "Decision Threshold",
+        "🎚️ Threshold",
         f"{threshold:.2f}"
     )
+
 
 with col3:
 
     st.metric(
-        "Total Transactions",
+        "💳 Transactions",
         f"{len(data):,}"
     )
+
+
+with col4:
+
+    st.metric(
+        "🚨 Fraud Cases",
+        f"{fraud_count:,}"
+    )
+
+
+st.divider()
 
 
 # ==========================================
 # Transaction Prediction
 # ==========================================
 
-st.header("🔍 Check a Transaction")
+st.header(
+    "🔎 Check a Transaction"
+)
+
+st.write(
+    "Enter a transaction number to calculate "
+    "its fraud probability."
+)
+
 
 transaction_number = st.number_input(
-    "Enter Transaction Number",
+    "Transaction Number",
     min_value=0,
     max_value=len(data) - 1,
     value=0,
@@ -155,6 +284,10 @@ if st.button(
     use_container_width=True
 ):
 
+    # --------------------------------------
+    # Select Transaction
+    # --------------------------------------
+
     transaction = (
         data
         .drop("Class", axis=1)
@@ -162,17 +295,34 @@ if st.button(
         .copy()
     )
 
-    transaction[["Time", "Amount"]] = (
-        scaler.transform(
-            transaction[["Time", "Amount"]]
-        )
+
+    # --------------------------------------
+    # Scale Transaction
+    # --------------------------------------
+
+    transaction[
+        ["Time", "Amount"]
+    ] = scaler.transform(
+        transaction[
+            ["Time", "Amount"]
+        ]
     )
 
-    fraud_probability = (
+
+    # --------------------------------------
+    # Get Fraud Probability
+    # --------------------------------------
+
+    fraud_probability = float(
         model.predict_proba(
             transaction
         )[0][1]
     )
+
+
+    # --------------------------------------
+    # Prediction
+    # --------------------------------------
 
     if fraud_probability >= threshold:
 
@@ -183,9 +333,16 @@ if st.button(
         prediction = "NORMAL"
 
 
-    actual_class = data.iloc[
-        transaction_number
-    ]["Class"]
+    # --------------------------------------
+    # Actual Class
+    # --------------------------------------
+
+    actual_class = int(
+        data.iloc[
+            transaction_number
+        ]["Class"]
+    )
+
 
     if actual_class == 1:
 
@@ -196,16 +353,25 @@ if st.button(
         actual_result = "NORMAL"
 
 
-    st.subheader("📊 Transaction Result")
+    # ======================================
+    # Transaction Result
+    # ======================================
+
+    st.subheader(
+        "📊 Transaction Result"
+    )
+
 
     col1, col2, col3 = st.columns(3)
+
 
     with col1:
 
         st.metric(
             "Transaction",
-            transaction_number
+            f"{transaction_number:,}"
         )
+
 
     with col2:
 
@@ -213,6 +379,7 @@ if st.button(
             "Fraud Probability",
             f"{fraud_probability * 100:.2f}%"
         )
+
 
     with col3:
 
@@ -222,42 +389,114 @@ if st.button(
         )
 
 
-    if prediction == "FRAUD":
+    # ======================================
+    # Fraud Probability Visualization
+    # ======================================
 
-        st.error("🚨 FRAUD DETECTED")
+    st.subheader(
+        "📈 Fraud Probability"
+    )
+
+    st.progress(
+        min(fraud_probability, 1.0)
+    )
+
+    st.caption(
+        f"Fraud probability: "
+        f"{fraud_probability * 100:.2f}%"
+    )
+
+
+    # ======================================
+    # Risk Level
+    # ======================================
+
+    if fraud_probability >= threshold:
+
+        st.error(
+            "🚨 FRAUD DETECTED"
+        )
+
+        st.write(
+            "**Prediction:** FRAUD"
+        )
+
+        st.write(
+            "**Risk Level:** HIGH"
+        )
+
+
+    elif fraud_probability >= 0.30:
+
+        st.warning(
+            "⚠️ SUSPICIOUS TRANSACTION"
+        )
+
+        st.write(
+            "**Prediction:** NORMAL"
+        )
+
+        st.write(
+            "**Risk Level:** MEDIUM"
+        )
+
 
     else:
 
-        st.success("✅ NORMAL TRANSACTION")
+        st.success(
+            "✅ NORMAL TRANSACTION"
+        )
+
+        st.write(
+            "**Prediction:** NORMAL"
+        )
+
+        st.write(
+            "**Risk Level:** LOW"
+        )
 
 
-    st.write(
-        f"**Prediction:** {prediction}"
+    # ======================================
+    # Decision Threshold
+    # ======================================
+
+    st.info(
+        f"Decision threshold: **{threshold:.2f}** "
+        f"({threshold * 100:.0f}%)"
     )
 
-    st.write(
-        f"**Decision Threshold:** "
-        f"{threshold:.2f}"
-    )
 
+    # ======================================
+    # Transaction Details
+    # ======================================
 
-    with st.expander("View Transaction Details"):
+    with st.expander(
+        "🔍 View Transaction Details"
+    ):
 
         original_transaction = (
-            data.iloc[[transaction_number]]
+            data.iloc[
+                [transaction_number]
+            ]
         )
 
         st.dataframe(
             original_transaction,
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
+
+
+st.divider()
 
 
 # ==========================================
 # Top Suspicious Transactions
 # ==========================================
 
-st.header("🚨 Top Suspicious Transactions")
+st.header(
+    "🚨 Top Suspicious Transactions"
+)
 
 st.write(
     "Transactions with the highest predicted "
@@ -266,52 +505,41 @@ st.write(
 
 
 # ==========================================
-# Prepare Dataset for Prediction
-# ==========================================
-
-prediction_data = (
-    data
-    .drop("Class", axis=1)
-    .copy()
-)
-
-prediction_data[["Time", "Amount"]] = (
-    scaler.transform(
-        prediction_data[["Time", "Amount"]]
-    )
-)
-
-
-# ==========================================
-# Calculate Probabilities
-# ==========================================
-
-all_probabilities = model.predict_proba(
-    prediction_data
-)[:, 1]
-
-
-# ==========================================
 # Create Results Table
 # ==========================================
 
 suspicious_transactions = pd.DataFrame({
 
-    "Transaction": range(len(data)),
+    "Transaction": range(
+        len(data)
+    ),
 
     "Fraud Probability": all_probabilities,
 
-    "Actual Class": data["Class"].values
+    "Actual Class": data[
+        "Class"
+    ].values
 
 })
 
 
-suspicious_transactions["Prediction"] = (
-    suspicious_transactions["Fraud Probability"]
+# ==========================================
+# Prediction
+# ==========================================
+
+suspicious_transactions[
+    "Prediction"
+] = (
+    suspicious_transactions[
+        "Fraud Probability"
+    ]
     >= threshold
 ).map({
+
     True: "FRAUD",
+
     False: "NORMAL"
+
 })
 
 
@@ -330,22 +558,41 @@ top_suspicious = (
 )
 
 
-top_suspicious["Fraud Probability"] = (
-    top_suspicious["Fraud Probability"] * 100
+# ==========================================
+# Format Probability
+# ==========================================
+
+top_suspicious[
+    "Fraud Probability"
+] = (
+    top_suspicious[
+        "Fraud Probability"
+    ] * 100
 ).round(2)
 
 
-top_suspicious["Actual Class"] = (
-    top_suspicious["Actual Class"]
+# ==========================================
+# Format Actual Class
+# ==========================================
+
+top_suspicious[
+    "Actual Class"
+] = (
+    top_suspicious[
+        "Actual Class"
+    ]
     .map({
+
         0: "NORMAL",
+
         1: "FRAUD"
+
     })
 )
 
 
 # ==========================================
-# Display Table
+# Display Suspicious Transactions
 # ==========================================
 
 st.dataframe(
@@ -355,22 +602,20 @@ st.dataframe(
 )
 
 
+st.divider()
+
+
 # ==========================================
-# Dataset Statistics
+# Dataset Overview
 # ==========================================
 
-st.header("📈 Dataset Overview")
-
-normal_count = (
-    data["Class"] == 0
-).sum()
-
-fraud_count = (
-    data["Class"] == 1
-).sum()
+st.header(
+    "📊 Dataset Overview"
+)
 
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
+
 
 with col1:
 
@@ -379,6 +624,7 @@ with col1:
         f"{normal_count:,}"
     )
 
+
 with col2:
 
     st.metric(
@@ -386,12 +632,52 @@ with col2:
         f"{fraud_count:,}"
     )
 
+
 with col3:
 
     st.metric(
         "Fraud Percentage",
-        f"{(fraud_count / len(data)) * 100:.4f}%"
+        f"{fraud_percentage:.4f}%"
     )
+
+
+with col4:
+
+    st.metric(
+        "Total Features",
+        f"{len(data.columns) - 1}"
+    )
+
+
+# ==========================================
+# Class Distribution
+# ==========================================
+
+st.subheader(
+    "📊 Class Distribution"
+)
+
+
+distribution_data = pd.DataFrame({
+
+    "Class": [
+        "Normal",
+        "Fraud"
+    ],
+
+    "Transactions": [
+        normal_count,
+        fraud_count
+    ]
+
+})
+
+
+st.bar_chart(
+    distribution_data.set_index(
+        "Class"
+    )
+)
 
 
 # ==========================================
@@ -401,6 +687,6 @@ with col3:
 st.divider()
 
 st.caption(
-    "Credit Card Fraud Detection • "
-    "Machine Learning Project"
+    "💳 Credit Card Fraud Detection • "
+    "Random Forest Machine Learning Project"
 )
